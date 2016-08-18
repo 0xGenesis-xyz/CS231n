@@ -29,7 +29,26 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_classes = W.shape[1]
+  num_train = X.shape[0]
+
+  for i in range(num_train):
+    scores = np.dot(X[i], W)
+    logC = np.max(scores)
+    scores -= logC
+    escores = np.e ** scores
+    s = np.sum(escores)
+    f = escores/s
+
+    for j in range(num_classes):
+      loss += (j == y[i]) * np.log(f[j])
+      dW[:, j] += ((j == y[i]) - f[j])*X[i]
+
+  loss /= -num_train
+  dW /= -num_train
+
+  loss += 0.5 * reg * np.sum(W * W)
+  dW += reg*W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
@@ -53,7 +72,28 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_classes = W.shape[1]
+  num_train = X.shape[0]
+
+  scores = np.dot(X, W)
+  logC = np.max(scores, axis=1)
+  logC.shape = (num_train, 1)
+  scores -= logC
+  escores = np.exp(scores)
+  s = np.sum(escores, axis=1)
+  s.shape = (num_train, 1)
+  f = escores/s
+  tmp = -f
+  tmp[range(num_train), y] += 1
+
+  loss = np.sum(np.log(f[range(num_train), y]))
+  dW = np.dot(X.T, tmp)
+
+  loss /= -num_train
+  dW /= -num_train
+
+  loss += 0.5 * reg * np.sum(W * W)
+  dW += reg*W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
