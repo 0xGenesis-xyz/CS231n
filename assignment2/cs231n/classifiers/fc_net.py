@@ -179,6 +179,9 @@ class FullyConnectedNet(object):
     for i, hidden_dim in enumerate(hidden_dims):
       self.params['W%d'%(i+1)] = np.random.normal(0, weight_scale, (last_dim, hidden_dim))
       self.params['b%d'%(i+1)] = np.zeros(hidden_dim)
+      if self.use_batchnorm:
+        self.params['gamma%d'%(i+1)] = np.ones(hidden_dim)
+        self.params['beta%d'%(i+1)] = np.zeros(hidden_dim)
       last_dim = hidden_dim
     self.params['W%d'%(self.num_layers)] = np.random.normal(0, weight_scale, (last_dim, num_classes))
     self.params['b%d'%(self.num_layers)] = np.zeros(num_classes)
@@ -224,7 +227,7 @@ class FullyConnectedNet(object):
       self.dropout_param['mode'] = mode   
     if self.use_batchnorm:
       for bn_param in self.bn_params:
-        bn_param[mode] = mode
+        bn_param['mode'] = mode
 
     scores = None
     ############################################################################
@@ -243,7 +246,11 @@ class FullyConnectedNet(object):
     H = X
     for i in xrange(1, self.num_layers):
       W, b = self.params['W%d'%(i)], self.params['b%d'%(i)]
-      H, caches[i] = affine_relu_forward(H, W, b)
+      if self.use_batchnorm:
+        gamma, beta = self.params['gamma%d'%(i)], self.params['beta%d'%(i)]
+        H, caches[i] = affine_bn_relu_forward(H, W, b, gamma, beta, self.bn_params[i-1])
+      else:
+        H, caches[i] = affine_relu_forward(H, W, b)
     W, b = self.params['W%d'%(self.num_layers)], self.params['b%d'%(self.num_layers)]
     scores, caches[self.num_layers] = affine_forward(H, W, b)
     ############################################################################
@@ -275,11 +282,17 @@ class FullyConnectedNet(object):
     grads['W%d'%(self.num_layers)] = dW + self.reg*W
     grads['b%d'%(self.num_layers)] = db
     for i in xrange(self.num_layers-1, 0, -1):
-      dH, dW, db = affine_relu_backward(dH, caches[i])
+      if self.use_batchnorm:
+        dH, dW, db, dgamma, dbeta = affine_bn_relu_backward(dH, caches[i])
+      else:
+        dH, dW, db = affine_relu_backward(dH, caches[i])
       W = self.params['W%d'%(i)]
       loss += 0.5*self.reg*(np.sum(W*W))
       grads['W%d'%(i)] = dW + self.reg*W
       grads['b%d'%(i)] = db
+      if self.use_batchnorm:
+        grads['gamma%d'%(i)] = dgamma
+        grads['beta%d'%(i)] = dbeta
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
