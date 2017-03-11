@@ -141,7 +141,7 @@ class CaptioningRNN(object):
     if self.cell_type == 'rnn':
       h, cacheH = rnn_forward(wordVec, h0, Wx, Wh, b)
     elif self.cell_type == 'lstm':
-      pass
+      h, cacheH = lstm_forward(wordVec, h0, Wx, Wh, b)
     else:
       raise ValueError('Invalid cell_type "%s"' % cell_type)
 
@@ -153,7 +153,7 @@ class CaptioningRNN(object):
     if self.cell_type == 'rnn':
       dwordVec, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dh, cacheH)
     elif self.cell_type == 'lstm':
-      pass
+      dwordVec, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dh, cacheH)
     else:
       raise ValueError('Invalid cell_type "%s"' % cell_type)
 
@@ -222,6 +222,8 @@ class CaptioningRNN(object):
     ###########################################################################
     h, _ = affine_forward(features, W_proj, b_proj)
     word = [self._start]*N
+    H = h.shape[1]
+    c = np.zeros((N, H))
     captions[:, 0] = self._start
     for i in xrange(1, max_length):
       wordVec = W_embed[word]
@@ -229,7 +231,7 @@ class CaptioningRNN(object):
       if self.cell_type == 'rnn':
         h, _ = rnn_step_forward(wordVec, h, Wx, Wh, b)
       elif self.cell_type == 'lstm':
-        pass
+        h, c, _ = lstm_step_forward(wordVec, h, c, Wx, Wh, b)
       else:
         raise ValueError('Invalid cell_type "%s"' % cell_type)
       
